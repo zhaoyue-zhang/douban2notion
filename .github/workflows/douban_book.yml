@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        DEBUG_HEATMAP: "1"
         BOOK_NOTION_TOKEN: ${{ secrets.BOOK_NOTION_TOKEN }}
         NOTION_BOOK_URL: ${{ secrets.NOTION_BOOK_URL }}
         DOUBAN_NAME: ${{ secrets.DOUBAN_NAME }}
