@@ -206,6 +206,8 @@ def insert_book(douban_name,notion_helper):
                 or notion_movive.get("短评") != book.get("短评")
                 or notion_movive.get("状态") != book.get("状态")
                 or notion_movive.get("评分") != book.get("评分")
+                # 老 page 的 Count 是 None，新写入=1，需要触发 update
+                or notion_movive.get("Count") != book.get("Count")
             ):
                 properties = utils.get_properties(book, book_properties_type_dict)
                 notion_helper.get_date_relation(properties,create_time)
