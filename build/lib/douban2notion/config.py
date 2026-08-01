@@ -24,6 +24,8 @@ book_properties_type_dict = {
     "简介":RICH_TEXT,
     "豆瓣链接":URL,
     "出版社":MULTI_SELECT,
+    # 用户在 Notion 书架库加的 number 属性，用于 github_heatmap 累加
+    "Count": NUMBER,
 }
 
 TAG_ICON_URL = "https://www.notion.so/icons/tag_gray.svg"

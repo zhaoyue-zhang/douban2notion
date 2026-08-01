@@ -193,6 +193,8 @@ def insert_book(douban_name,notion_helper):
         book["日期"] = create_time.int_timestamp
         book["豆瓣链接"] = subject.get("url")
         book["状态"] = book_status.get(result.get("status"))
+        # 给 Notion 书架库新加的 Count number 字段填 1（每读过一本 = +1）
+        book["Count"] = 1
         if result.get("rating"):
             book["评分"] = rating.get(result.get("rating").get("value"))
         if result.get("comment"):
@@ -204,6 +206,8 @@ def insert_book(douban_name,notion_helper):
                 or notion_movive.get("短评") != book.get("短评")
                 or notion_movive.get("状态") != book.get("状态")
                 or notion_movive.get("评分") != book.get("评分")
+                # 老 page 的 Count 是 None，新写入=1，需要触发 update
+                or notion_movive.get("Count") != book.get("Count")
             ):
                 properties = utils.get_properties(book, book_properties_type_dict)
                 notion_helper.get_date_relation(properties,create_time)
