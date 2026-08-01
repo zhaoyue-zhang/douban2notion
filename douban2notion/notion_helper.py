@@ -80,13 +80,46 @@ class NotionHelper:
             self.database_name_dict.get("AUTHOR_DATABASE_NAME")
         )
         if self.day_database_id:
-            self.write_database_id(self.day_database_id)
+            self.write_database_id(self.day_database_id, "DAY_DATABASE_ID")
+        # DEBUG: dump book/movie database schema + data_source_id
+        if os.getenv("DEBUG_HEATMAP") == "1":
+            try:
+                import requests as _rq
+                for label, db_id in [
+                    ("BOOK", self.book_database_id),
+                    ("MOVIE", self.movie_database_id),
+                ]:
+                    if not db_id:
+                        print(f"DEBUG: {label}_DATABASE_ID is None")
+                        continue
+                    r = _rq.get(
+                        f"https://api.notion.com/v1/databases/{db_id}",
+                        headers={
+                            "Authorization": f"Bearer {notion_token}",
+                            "Notion-Version": "2026-03-11",
+                        },
+                        timeout=15,
+                    )
+                    print(f"DEBUG: {label} db retrieve http {r.status_code}")
+                    if r.ok:
+                        body = r.json()
+                        props = body.get("properties", {})
+                        # 找 number 类型属性
+                        num_props = [k for k, v in props.items() if v.get("type") == "number"]
+                        date_props = [k for k, v in props.items() if v.get("type") == "date"]
+                        ds_list = body.get("data_sources") or []
+                        ds_id = ds_list[0].get("id") if ds_list else None
+                        print(f"DEBUG: {label} num_props = {num_props}")
+                        print(f"DEBUG: {label} date_props = {date_props}")
+                        print(f"DEBUG: {label}_DATA_SOURCE_ID = {ds_id}")
+            except Exception as e:
+                print(f"DEBUG error: {e}")
 
-    def write_database_id(self, database_id):
+    def write_database_id(self, database_id, env_name="DATABASE_ID"):
         env_file = os.getenv('GITHUB_ENV')
         # 将值写入环境文件
         with open(env_file, "a") as file:
-            file.write(f"DATABASE_ID={database_id}\n")
+            file.write(f"{env_name}={database_id}\n")
     def extract_page_id(self, notion_url):
         # 正则表达式匹配 32 个字符的 Notion page_id
         match = re.search(
