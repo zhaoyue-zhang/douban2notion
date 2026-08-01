@@ -193,6 +193,8 @@ def insert_book(douban_name,notion_helper):
         book["日期"] = create_time.int_timestamp
         book["豆瓣链接"] = subject.get("url")
         book["状态"] = book_status.get(result.get("status"))
+        # 给 Notion 书架库新加的 Count number 字段填 1（每读过一本 = +1）
+        book["Count"] = 1
         if result.get("rating"):
             book["评分"] = rating.get(result.get("rating").get("value"))
         if result.get("comment"):

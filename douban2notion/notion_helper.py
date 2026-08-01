@@ -81,80 +81,36 @@ class NotionHelper:
         )
         if self.day_database_id:
             self.write_database_id(self.day_database_id, "DAY_DATABASE_ID")
-        # DEBUG: dump book/movie database schema + data_source_id
-        if os.getenv("DEBUG_HEATMAP") == "1":
+        # Notion 2025-09 API 改版：databases 和 data_sources 分离。
+        # github_heatmap 2.3.0 用 /v1/data_sources/{id}/query，需要 data_source_id
+        # （database_id 打过去返回 404，loader 静默吞掉，导致热力图全空）。
+        # 从 database retrieve 的 data_sources[0] 拿 id，写到 env。
+        for _label, _db_id in [
+            ("BOOK", self.book_database_id),
+            ("MOVIE", self.movie_database_id),
+        ]:
+            if not _db_id:
+                continue
             try:
                 import requests as _rq
-                _debug_pairs = [
-                    ("B", self.book_database_id, "BOOK"),
-                    ("M", self.movie_database_id, "MOVIE"),
-                ]
-                for _shorter, db_id, _full in _debug_pairs:
-                    if not db_id:
-                        print(f"DEBUG: {_full}_DATABASE_ID is None")
-                        continue
-                    r = _rq.get(
-                        f"https://api.notion.com/v1/databases/{db_id}",
-                        headers={
-                            "Authorization": f"Bearer {notion_token}",
-                            "Notion-Version": "2026-03-11",
-                        },
-                        timeout=15,
-                    )
-                    print(f"DEBUG: tag={_shorter} http={r.status_code}")
-                    # 也用老版 API 试试（避免新版 schema 字段缺失）
-                    r_old = _rq.get(
-                        f"https://api.notion.com/v1/databases/{db_id}",
-                        headers={
-                            "Authorization": f"Bearer {notion_token}",
-                            "Notion-Version": "2022-06-28",
-                        },
-                        timeout=15,
-                    )
-                    print(f"DEBUG: tag={_shorter} old_api_http={r_old.status_code}")
-                    if r.ok:
-                        body = r.json()
-                        print(f"DEBUG: tag={_shorter} body_keys={list(body.keys())}")
-                        print(f"DEBUG: tag={_shorter} body_title={body.get('title')}")
-                        print(f"DEBUG: tag={_shorter} body_parent={body.get('parent')}")
-                        print(f"DEBUG: tag={_shorter} body_object={body.get('object')}")
-                        # 2026-03-11 API 拆分了：properties 移到 data_sources
-                        ds_list = body.get("data_sources") or []
-                        ds_id = ds_list[0].get("id") if ds_list else None
+                token = os.getenv("NOTION_TOKEN", "").strip() or notion_token
+                r = _rq.get(
+                    f"https://api.notion.com/v1/databases/{_db_id}",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Notion-Version": "2026-03-11",
+                    },
+                    timeout=15,
+                )
+                if r.ok:
+                    ds_list = r.json().get("data_sources") or []
+                    if ds_list:
+                        ds_id = ds_list[0].get("id") or ds_list[0].get("data_source_id")
                         if ds_id:
-                            r_ds = _rq.get(
-                                f"https://api.notion.com/v1/data_sources/{ds_id}",
-                                headers={
-                                    "Authorization": f"Bearer {notion_token}",
-                                    "Notion-Version": "2026-03-11",
-                                },
-                                timeout=15,
-                            )
-                            print(f"DEBUG: tag={_shorter} ds_http={r_ds.status_code}")
-                            if r_ds.ok:
-                                ds_body = r_ds.json()
-                                props = ds_body.get("properties", {})
-                                all_types = {k: v.get("type") for k, v in props.items()}
-                                num_props = [k for k, v in props.items() if v.get("type") == "number"]
-                                date_props = [k for k, v in props.items() if v.get("type") == "date"]
-                                print(f"DEBUG: tag={_shorter} ds_props_types={all_types}")
-                                print(f"DEBUG: tag={_shorter} ds_num={num_props}")
-                                print(f"DEBUG: tag={_shorter} ds_date={date_props}")
-                        props = body.get("properties", {})
-                        num_props = [k for k, v in props.items() if v.get("type") == "number"]
-                        date_props = [k for k, v in props.items() if v.get("type") == "date"]
-                        all_types = {k: v.get("type") for k, v in props.items()}
-                        ds_list = body.get("data_sources") or []
-                        ds_id = ds_list[0].get("id") if ds_list else None
-                        print(f"DEBUG: tag={_shorter} all_types={all_types}")
-                        print(f"DEBUG: tag={_shorter} num={num_props}")
-                        print(f"DEBUG: tag={_shorter} date={date_props}")
-                        print(f"DEBUG: tag={_shorter} ds_id={ds_id}")
-                        if ds_id:
-                            env_var = f"{_full}_DATA_SOURCE_ID"
-                            self.write_database_id(ds_id, env_var)
+                            self.write_database_id(ds_id, f"{_label}_DATA_SOURCE_ID")
+                            print(f"{_label}_DATA_SOURCE_ID={ds_id}")
             except Exception as e:
-                print(f"DEBUG error: {e}")
+                print(f"WARN: failed to resolve {_label} data source id: {e}")
 
     def write_database_id(self, database_id, env_name="DATABASE_ID"):
         env_file = os.getenv('GITHUB_ENV')
