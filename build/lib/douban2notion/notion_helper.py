@@ -114,6 +114,10 @@ class NotionHelper:
                     print(f"DEBUG: tag={_shorter} old_api_http={r_old.status_code}")
                     if r.ok:
                         body = r.json()
+                        print(f"DEBUG: tag={_shorter} body_keys={list(body.keys())}")
+                        print(f"DEBUG: tag={_shorter} body_title={body.get('title')}")
+                        print(f"DEBUG: tag={_shorter} body_parent={body.get('parent')}")
+                        print(f"DEBUG: tag={_shorter} body_object={body.get('object')}")
                         props = body.get("properties", {})
                         num_props = [k for k, v in props.items() if v.get("type") == "number"]
                         date_props = [k for k, v in props.items() if v.get("type") == "date"]
