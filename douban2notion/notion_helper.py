@@ -118,6 +118,28 @@ class NotionHelper:
                         print(f"DEBUG: tag={_shorter} body_title={body.get('title')}")
                         print(f"DEBUG: tag={_shorter} body_parent={body.get('parent')}")
                         print(f"DEBUG: tag={_shorter} body_object={body.get('object')}")
+                        # 2026-03-11 API 拆分了：properties 移到 data_sources
+                        ds_list = body.get("data_sources") or []
+                        ds_id = ds_list[0].get("id") if ds_list else None
+                        if ds_id:
+                            r_ds = _rq.get(
+                                f"https://api.notion.com/v1/data_sources/{ds_id}",
+                                headers={
+                                    "Authorization": f"Bearer {notion_token}",
+                                    "Notion-Version": "2026-03-11",
+                                },
+                                timeout=15,
+                            )
+                            print(f"DEBUG: tag={_shorter} ds_http={r_ds.status_code}")
+                            if r_ds.ok:
+                                ds_body = r_ds.json()
+                                props = ds_body.get("properties", {})
+                                all_types = {k: v.get("type") for k, v in props.items()}
+                                num_props = [k for k, v in props.items() if v.get("type") == "number"]
+                                date_props = [k for k, v in props.items() if v.get("type") == "date"]
+                                print(f"DEBUG: tag={_shorter} ds_props_types={all_types}")
+                                print(f"DEBUG: tag={_shorter} ds_num={num_props}")
+                                print(f"DEBUG: tag={_shorter} ds_date={date_props}")
                         props = body.get("properties", {})
                         num_props = [k for k, v in props.items() if v.get("type") == "number"]
                         date_props = [k for k, v in props.items() if v.get("type") == "date"]
