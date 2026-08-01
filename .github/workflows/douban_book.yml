@@ -32,6 +32,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # 用 fork 仓库代码覆盖 PyPI 0.0.14（避免旧版 generate-activation-code 之类的 0.0.x 坑）
+          pip install .
       - name: douban book sync
         run: |
           douban "book"

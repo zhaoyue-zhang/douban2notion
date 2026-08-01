@@ -1,4 +1,4 @@
-name: douban movie sync
+name: douban book sync
 
 on:
   workflow_dispatch:
@@ -14,8 +14,8 @@ jobs:
     env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         DEBUG_HEATMAP: "1"
-        MOVIE_NOTION_TOKEN: ${{ secrets.MOVIE_NOTION_TOKEN }}
-        NOTION_MOVIE_URL: ${{ secrets.NOTION_MOVIE_URL }}
+        BOOK_NOTION_TOKEN: ${{ secrets.BOOK_NOTION_TOKEN }}
+        NOTION_BOOK_URL: ${{ secrets.NOTION_BOOK_URL }}
         DOUBAN_NAME: ${{ secrets.DOUBAN_NAME }}
         YEAR: ${{ vars.YEAR }}
         REF: ${{ github.ref }}
@@ -32,20 +32,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: douban movie sync
+          # 用 fork 仓库代码覆盖 PyPI 0.0.14（避免旧版 generate-activation-code 之类的 0.0.x 坑）
+          pip install .
+      - name: douban book sync
         run: |
           douban "movie"
       - name: Remove folder
-        run: rm -rf ./OUT_FOLDER/movie
+        run: rm -rf ./OUT_FOLDER/book
       - name: Set default year if not provided
         run: echo "YEAR=$(date +"%Y")" >> $GITHUB_ENV
         if: env.YEAR == ''
       - name: notion heatmap
         run: |
-          github_heatmap notion  --notion_token "${{secrets.MOVIE_NOTION_TOKEN || secrets.NOTION_TOKEN}}" --database_id "${{ env.DATABASE_ID }}" --date_prop_name "日期" --value_prop_name "看过" --unit "部" --year $YEAR  --me "${{secrets.MOVIE_NAME}}" --without-type-name  --background-color=${{ vars.background_color||'#FFFFFF'}} --track-color=${{ vars.track_color||'#ACE7AE'}} --special-color1=${{ vars.special_color||'#69C16E'}} --special-color2=${{ vars.special_color2||'#549F57'}} --dom-color=${{ vars.dom_color||'#EBEDF0'}} --text-color=${{ vars.text_color||'#000000'}}
+          github_heatmap notion  --notion_token "${{ secrets.BOOK_NOTION_TOKEN || secrets.NOTION_TOKEN }}" --database_id "${{ env.DATABASE_ID }}" --date_prop_name "日期" --value_prop_name "读过" --unit "本" --year $YEAR  --me "${{secrets.BOOK_NAME}}" --without-type-name --background-color=${{ vars.background_color||'#FFFFFF'}} --track-color=${{ vars.track_color||'#ACE7AE'}} --special-color1=${{ vars.special_color||'#69C16E'}} --special-color2=${{ vars.special_color2||'#549F57'}} --dom-color=${{ vars.dom_color||'#EBEDF0'}} --text-color=${{ vars.text_color||'#000000'}}
       - name: udpate heatmap 
         run: |
-            heatmap "movie"
+            heatmap "book"
       - name: push
         run: |
           git config --local user.email "action@github.com"
