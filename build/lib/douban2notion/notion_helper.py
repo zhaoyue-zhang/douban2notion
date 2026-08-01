@@ -85,12 +85,13 @@ class NotionHelper:
         if os.getenv("DEBUG_HEATMAP") == "1":
             try:
                 import requests as _rq
-                for label, db_id in [
-                    ("BOOK", self.book_database_id),
-                    ("MOVIE", self.movie_database_id),
-                ]:
+                _debug_pairs = [
+                    ("B", self.book_database_id, "BOOK"),
+                    ("M", self.movie_database_id, "MOVIE"),
+                ]
+                for _shorter, db_id, _full in _debug_pairs:
                     if not db_id:
-                        print(f"DEBUG: {label}_DATABASE_ID is None")
+                        print(f"DEBUG: {_full}_DATABASE_ID is None")
                         continue
                     r = _rq.get(
                         f"https://api.notion.com/v1/databases/{db_id}",
@@ -100,18 +101,22 @@ class NotionHelper:
                         },
                         timeout=15,
                     )
-                    print(f"DEBUG: {label} db retrieve http {r.status_code}")
+                    print(f"DEBUG: tag={_shorter} http={r.status_code}")
                     if r.ok:
                         body = r.json()
                         props = body.get("properties", {})
-                        # 找 number 类型属性
                         num_props = [k for k, v in props.items() if v.get("type") == "number"]
                         date_props = [k for k, v in props.items() if v.get("type") == "date"]
+                        all_types = {k: v.get("type") for k, v in props.items()}
                         ds_list = body.get("data_sources") or []
                         ds_id = ds_list[0].get("id") if ds_list else None
-                        print(f"DEBUG: {label} num_props = {num_props}")
-                        print(f"DEBUG: {label} date_props = {date_props}")
-                        print(f"DEBUG: {label}_DATA_SOURCE_ID = {ds_id}")
+                        print(f"DEBUG: tag={_shorter} all_types={all_types}")
+                        print(f"DEBUG: tag={_shorter} num={num_props}")
+                        print(f"DEBUG: tag={_shorter} date={date_props}")
+                        print(f"DEBUG: tag={_shorter} ds_id={ds_id}")
+                        if ds_id:
+                            env_var = f"{_full}_DATA_SOURCE_ID"
+                            self.write_database_id(ds_id, env_var)
             except Exception as e:
                 print(f"DEBUG error: {e}")
 
