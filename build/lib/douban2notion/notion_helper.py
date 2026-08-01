@@ -102,6 +102,16 @@ class NotionHelper:
                         timeout=15,
                     )
                     print(f"DEBUG: tag={_shorter} http={r.status_code}")
+                    # 也用老版 API 试试（避免新版 schema 字段缺失）
+                    r_old = _rq.get(
+                        f"https://api.notion.com/v1/databases/{db_id}",
+                        headers={
+                            "Authorization": f"Bearer {notion_token}",
+                            "Notion-Version": "2022-06-28",
+                        },
+                        timeout=15,
+                    )
+                    print(f"DEBUG: tag={_shorter} old_api_http={r_old.status_code}")
                     if r.ok:
                         body = r.json()
                         props = body.get("properties", {})
