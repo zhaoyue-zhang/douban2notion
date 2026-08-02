@@ -103,6 +103,8 @@ def insert_movie(douban_name,notion_helper):
         movie["日期"] = create_time.int_timestamp
         movie["豆瓣链接"] = subject.get("url")
         movie["状态"] = movie_status.get(result.get("status"))
+        # 跟 BOOK 一样，给 Notion 电影库新加的 Count number 字段填 1
+        movie["Count"] = 1
         if result.get("rating"):
             movie["评分"] = rating.get(result.get("rating").get("value"))
         if result.get("comment"):
@@ -114,6 +116,8 @@ def insert_movie(douban_name,notion_helper):
                 or notion_movive.get("短评") != movie.get("短评")
                 or notion_movive.get("状态") != movie.get("状态")
                 or notion_movive.get("评分") != movie.get("评分")
+                # 老 page 的 Count 是 None，新写入=1，需要触发 update
+                or notion_movive.get("Count") != movie.get("Count")
             ):
                 properties = utils.get_properties(movie, movie_properties_type_dict)
                 notion_helper.get_date_relation(properties,create_time)
