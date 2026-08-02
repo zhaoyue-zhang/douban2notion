@@ -39,48 +39,6 @@ class NotionHelper:
     def __init__(self,type):
         is_movie = True if type=="movie" else False
         page_url = os.getenv("NOTION_MOVIE_URL") if is_movie else os.getenv("NOTION_BOOK_URL")
-        # DEBUG: probe this page URL to see if it's a database or page
-        if os.getenv("DEBUG_MOVIE_URL") == "1":
-            try:
-                import requests as _rq
-                token = os.getenv("NOTION_TOKEN", "").strip() or os.getenv("MOVIE_NOTION_TOKEN", "")
-                # 解析 URL 拿 id
-                import re as _re
-                m = _re.search(r"([a-f0-9]{32})", page_url or "")
-                probe_id = m.group(1) if m else None
-                if probe_id:
-                    r = _rq.get(
-                        f"https://api.notion.com/v1/pages/{probe_id}",
-                        headers={
-                            "Authorization": f"Bearer {token}",
-                            "Notion-Version": "2026-03-11",
-                        },
-                        timeout=15,
-                    )
-                    print(f"DEBUG: probe http={r.status_code}")
-                    if r.ok:
-                        body = r.json()
-                        print(f"DEBUG: probe object={body.get('object')}")
-                        print(f"DEBUG: probe parent={body.get('parent')}")
-                        # 如果是 page，可能包含 child_database，扫一下
-                        r2 = _rq.get(
-                            f"https://api.notion.com/v1/blocks/{probe_id}/children",
-                            headers={
-                                "Authorization": f"Bearer {token}",
-                                "Notion-Version": "2026-03-11",
-                            },
-                            timeout=15,
-                        )
-                        if r2.ok:
-                            children = r2.json().get("results", [])
-                            print(f"DEBUG: probe children_count={len(children)}")
-                            for c in children[:10]:
-                                t = c.get("type")
-                                if t == "child_database":
-                                    title = c.get("child_database", {}).get("title")
-                                    print(f"DEBUG:   child_database id={c.get('id')} title={title}")
-            except Exception as e:
-                print(f"DEBUG: probe error: {e}")
         notion_token = os.getenv("NOTION_TOKEN")
         if not notion_token:
             if is_movie:
@@ -151,6 +109,24 @@ class NotionHelper:
                         if ds_id:
                             self.write_database_id(ds_id, f"{_label}_DATA_SOURCE_ID")
                             print(f"{_label}_DATA_SOURCE_ID={ds_id}")
+                            # DEBUG: 也 dump schema
+                            if os.getenv("DEBUG_HEATMAP") == "1":
+                                r2 = _rq.get(
+                                    f"https://api.notion.com/v1/data_sources/{ds_id}",
+                                    headers={
+                                        "Authorization": f"Bearer {token}",
+                                        "Notion-Version": "2026-03-11",
+                                    },
+                                    timeout=15,
+                                )
+                                if r2.ok:
+                                    props = r2.json().get("properties", {})
+                                    types = {k: v.get("type") for k, v in props.items()}
+                                    nums = [k for k, v in props.items() if v.get("type") == "number"]
+                                    dates = [k for k, v in props.items() if v.get("type") == "date"]
+                                    print(f"DEBUG: {_label} types={types}")
+                                    print(f"DEBUG: {_label} nums={nums}")
+                                    print(f"DEBUG: {_label} dates={dates}")
             except Exception as e:
                 print(f"WARN: failed to resolve {_label} data source id: {e}")
 

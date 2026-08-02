@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-        DEBUG_MOVIE_URL: "1"
+        DEBUG_HEATMAP: "1"
         MOVIE_NOTION_TOKEN: ${{ secrets.MOVIE_NOTION_TOKEN }}
         NOTION_MOVIE_URL: ${{ secrets.NOTION_MOVIE_URL }}
         DOUBAN_NAME: ${{ secrets.DOUBAN_NAME }}
