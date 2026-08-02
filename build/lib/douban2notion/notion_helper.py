@@ -109,6 +109,24 @@ class NotionHelper:
                         if ds_id:
                             self.write_database_id(ds_id, f"{_label}_DATA_SOURCE_ID")
                             print(f"{_label}_DATA_SOURCE_ID={ds_id}")
+                            # DEBUG: 也 dump schema
+                            if os.getenv("DEBUG_HEATMAP") == "1":
+                                r2 = _rq.get(
+                                    f"https://api.notion.com/v1/data_sources/{ds_id}",
+                                    headers={
+                                        "Authorization": f"Bearer {token}",
+                                        "Notion-Version": "2026-03-11",
+                                    },
+                                    timeout=15,
+                                )
+                                if r2.ok:
+                                    props = r2.json().get("properties", {})
+                                    types = {k: v.get("type") for k, v in props.items()}
+                                    nums = [k for k, v in props.items() if v.get("type") == "number"]
+                                    dates = [k for k, v in props.items() if v.get("type") == "date"]
+                                    print(f"DEBUG: {_label} types={types}")
+                                    print(f"DEBUG: {_label} nums={nums}")
+                                    print(f"DEBUG: {_label} dates={dates}")
             except Exception as e:
                 print(f"WARN: failed to resolve {_label} data source id: {e}")
 

@@ -57,4 +57,6 @@ movie_properties_type_dict = {
     # "书架分类":SELECT,
     # "我的评分":SELECT,
     "豆瓣链接":URL,
+    # 跟 BOOK 一样，用户在 Notion 电影库加的 number 属性，用于 github_heatmap 累加
+    "Count": NUMBER,
 }
