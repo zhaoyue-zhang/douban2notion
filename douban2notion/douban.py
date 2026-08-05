@@ -159,9 +159,10 @@ def insert_movie(douban_name,notion_helper):
                 ]
             properties = utils.get_properties(movie, movie_properties_type_dict)
             notion_helper.get_date_relation(properties,create_time)
+            # Notion 2025-09 API 改版后，create_page parent 需要 data_source_id
             parent = {
-                "database_id": notion_helper.movie_database_id,
-                "type": "database_id",
+                "data_source_id": notion_helper.movie_data_source_id,
+                "type": "data_source_id",
             }
             notion_helper.create_page(
                 parent=parent, properties=properties, icon=get_icon(cover)
@@ -246,9 +247,10 @@ def insert_book(douban_name,notion_helper):
                 ]
             properties = utils.get_properties(book, book_properties_type_dict)
             notion_helper.get_date_relation(properties,create_time)
+            # Notion 2025-09 API 改版后，create_page parent 需要 data_source_id
             parent = {
-                "database_id": notion_helper.book_database_id,
-                "type": "database_id",
+                "data_source_id": notion_helper.book_data_source_id,
+                "type": "data_source_id",
             }
             notion_helper.create_page(
                 parent=parent, properties=properties, icon=get_icon(cover)
