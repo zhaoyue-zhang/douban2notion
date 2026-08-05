@@ -150,13 +150,8 @@ def insert_movie(douban_name,notion_helper):
                         else:
                             l.append(actor.get("name"))  
                 movie["演员"] = l
-            if subject.get("directors"):
-                movie["导演"] = [
-                    notion_helper.get_relation_id(
-                        x.get("name"), notion_helper.director_database_id, USER_ICON_URL
-                    )
-                    for x in subject.get("directors")[0:100]
-                ]
+            # 演员/导演 relation 暂不写：fork 0.0.7 缺 actor_database_id，
+            # director_database_id 在用户 Notion 端也没 share 给 integration
             properties = utils.get_properties(movie, movie_properties_type_dict)
             notion_helper.get_date_relation(properties,create_time)
             # Notion 2025-09 API 改版后，create_page parent 需要 data_source_id
