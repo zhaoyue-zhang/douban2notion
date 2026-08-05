@@ -93,11 +93,15 @@ class NotionHelper:
                 continue
             try:
                 import requests as _rq
-                token = os.getenv("NOTION_TOKEN", "").strip() or notion_token
+                # 用对应 label 的 token（BOOK 用 BOOK_NOTION_TOKEN，MOVIE 用 MOVIE_NOTION_TOKEN）
+                if _label == "BOOK":
+                    _token = os.getenv("BOOK_NOTION_TOKEN") or os.getenv("NOTION_TOKEN") or notion_token
+                else:
+                    _token = os.getenv("MOVIE_NOTION_TOKEN") or os.getenv("NOTION_TOKEN") or notion_token
                 r = _rq.get(
                     f"https://api.notion.com/v1/databases/{_db_id}",
                     headers={
-                        "Authorization": f"Bearer {token}",
+                        "Authorization": f"Bearer {_token}",
                         "Notion-Version": "2026-03-11",
                     },
                     timeout=15,
@@ -109,12 +113,15 @@ class NotionHelper:
                         if ds_id:
                             self.write_database_id(ds_id, f"{_label}_DATA_SOURCE_ID")
                             print(f"{_label}_DATA_SOURCE_ID={ds_id}")
+                            # 存到 instance 属性，给 create_page parent 用
+                            # (self.book_database_id / self.movie_database_id 保留 database id 给 query_all 用)
+                            setattr(self, f"{_label.lower()}_data_source_id", ds_id)
                             # DEBUG: 也 dump schema
                             if os.getenv("DEBUG_HEATMAP") == "1":
                                 r2 = _rq.get(
                                     f"https://api.notion.com/v1/data_sources/{ds_id}",
                                     headers={
-                                        "Authorization": f"Bearer {token}",
+                                        "Authorization": f"Bearer {_token}",
                                         "Notion-Version": "2026-03-11",
                                     },
                                     timeout=15,
@@ -135,6 +142,33 @@ class NotionHelper:
         # 将值写入环境文件
         with open(env_file, "a") as file:
             file.write(f"{env_name}={database_id}\n")
+
+    def _resolve_data_source_id(self, database_id):
+        """把 database_id 解析成 data_source_id（Notion 2025-09 API 改版后需要）
+
+        输入可能是 database_id 或 data_source_id；输出 data_source_id。
+        """
+        if not database_id:
+            return database_id
+        cache_key = f"ds_id_of_{database_id}"
+        if cache_key in self.__cache:
+            return self.__cache[cache_key]
+        # 尝试 retrieve database
+        try:
+            r = self.client.databases.retrieve(database_id=database_id)
+            ds_list = r.get("data_sources") or []
+            if ds_list:
+                ds_id = ds_list[0].get("id") or ds_list[0].get("data_source_id")
+                if ds_id:
+                    self.__cache[cache_key] = ds_id
+                    return ds_id
+            # 没 data_sources 字段，说明已经是 data source id
+            self.__cache[cache_key] = database_id
+            return database_id
+        except Exception:
+            # retrieve 失败，可能不是 database id，假设就是 data source id
+            self.__cache[cache_key] = database_id
+            return database_id
     def extract_page_id(self, notion_url):
         # 正则表达式匹配 32 个字符的 Notion page_id
         match = re.search(
@@ -226,9 +260,12 @@ class NotionHelper:
         if key in self.__cache:
             return self.__cache.get(key)
         filter = {"property": "标题", "title": {"equals": name}}
-        response = self.client.databases.query(database_id=id, filter=filter)
+        # 把 database_id 解析成 data_source_id（Notion 2025-09 API 改版后需要）
+        ds_id = self._resolve_data_source_id(id)
+        response = self.client.databases.query(database_id=ds_id, filter=filter)
         if len(response.get("results")) == 0:
-            parent = {"database_id": id, "type": "database_id"}
+            # Notion 2025-09 API 改版后，create_page parent 需要 data_source_id
+            parent = {"data_source_id": ds_id, "type": "data_source_id"}
             properties["标题"] = get_title(name)
             page_id = self.client.pages.create(
                 parent=parent, properties=properties, icon=get_icon(icon)

@@ -38,8 +38,8 @@ movie_properties_type_dict = {
     "短评":RICH_TEXT,
     # "ISBN":RICH_TEXT,
     # "链接":URL,
-    "导演":RELATION,
-    "演员":MULTI_SELECT,
+    # "导演":RELATION,  # 暂不写：fork 0.0.7 没 actor_database_id，调 get_relation_id 会 fail
+    # "演员":MULTI_SELECT,  # 暂不写：Notion 端 schema 是 relation，类型不匹配
     # "Sort":NUMBER,
     "封面":FILES,
     "分类":RELATION,
