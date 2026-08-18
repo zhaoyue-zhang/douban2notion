@@ -235,21 +235,19 @@ class NotionHelper:
         properties = {
             "日期": get_date(format_date(date)),
         }
-        properties["年"] = get_relation(
-            [
-                self.get_year_relation_id(new_date),
-            ]
-        )
-        properties["月"] = get_relation(
-            [
-                self.get_month_relation_id(new_date),
-            ]
-        )
-        properties["周"] = get_relation(
-            [
-                self.get_week_relation_id(new_date),
-            ]
-        )
+        # year/month/week relation 任何一个失败，fallback 跳过（不写 relation）
+        for field, fn in [
+            ("年", self.get_year_relation_id),
+            ("月", self.get_month_relation_id),
+            ("周", self.get_week_relation_id),
+        ]:
+            try:
+                rid = fn(new_date)
+            except Exception as e:
+                print(f"WARN: {field} relation failed: {e}")
+                continue
+            if rid:
+                properties[field] = get_relation([rid])
         return self.get_relation_id(
             day, self.day_database_id, TARGET_ICON_URL, properties
         )
@@ -262,14 +260,24 @@ class NotionHelper:
         filter = {"property": "标题", "title": {"equals": name}}
         # 把 database_id 解析成 data_source_id（Notion 2025-09 API 改版后需要）
         ds_id = self._resolve_data_source_id(id)
-        response = self.client.databases.query(database_id=ds_id, filter=filter)
+        try:
+            response = self.client.databases.query(database_id=ds_id, filter=filter)
+        except Exception as e:
+            print(f"WARN: get_relation_id query failed for '{name}': {e}")
+            return None
         if len(response.get("results")) == 0:
             # Notion 2025-09 API 改版后，create_page parent 需要 data_source_id
             parent = {"data_source_id": ds_id, "type": "data_source_id"}
             properties["标题"] = get_title(name)
-            page_id = self.client.pages.create(
-                parent=parent, properties=properties, icon=get_icon(icon)
-            ).get("id")
+            try:
+                page_id = self.client.pages.create(
+                    parent=parent, properties=properties, icon=get_icon(icon)
+                ).get("id")
+            except Exception as e:
+                # fallback：integration 没权限 / data source 没 share，
+                # 不写这条 relation（page 本身已建，relation 字段空）
+                print(f"WARN: get_relation_id create failed for '{name}' (skip relation): {e}")
+                return None
         else:
             page_id = response.get("results")[0].get("id")
         self.__cache[key] = page_id
@@ -351,23 +359,16 @@ class NotionHelper:
         return results
 
     def get_date_relation(self, properties, date):
-        properties["年"] = get_relation(
-            [
-                self.get_year_relation_id(date),
-            ]
-        )
-        properties["月"] = get_relation(
-            [
-                self.get_month_relation_id(date),
-            ]
-        )
-        properties["周"] = get_relation(
-            [
-                self.get_week_relation_id(date),
-            ]
-        )
-        properties["日"] = get_relation(
-            [
-                self.get_day_relation_id(date),
-            ]
-        )
+        for field, fn in [
+            ("年", self.get_year_relation_id),
+            ("月", self.get_month_relation_id),
+            ("周", self.get_week_relation_id),
+            ("日", self.get_day_relation_id),
+        ]:
+            try:
+                rid = fn(date)
+            except Exception as e:
+                print(f"WARN: {field} relation failed: {e}")
+                continue
+            if rid:
+                properties[field] = get_relation([rid])
