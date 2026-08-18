@@ -46,6 +46,7 @@ class NotionHelper:
             else:
                 notion_token = os.getenv("BOOK_NOTION_TOKEN")
         self.client = Client(auth=notion_token, log_level=logging.ERROR)
+        self._notion_token = notion_token
         self.__cache = {}
         self.page_id = self.extract_page_id(page_url)
         self.search_database(self.page_id)
@@ -261,7 +262,29 @@ class NotionHelper:
         # 把 database_id 解析成 data_source_id（Notion 2025-09 API 改版后需要）
         ds_id = self._resolve_data_source_id(id)
         try:
-            response = self.client.databases.query(database_id=ds_id, filter=filter)
+            # Notion 2025-09 API 改版：databases 和 data_sources 分离。
+            # databases.query 在新版本下用 data_source_id 会失败，
+            # 必须直接 HTTP 调 /v1/data_sources/{id}/query
+            import requests as _rq
+            r = _rq.post(
+                f"https://api.notion.com/v1/data_sources/{ds_id}/query",
+                headers={
+                    "Authorization": f"Bearer {self._notion_token}",
+                    "Notion-Version": "2026-03-11",
+                    "Content-Type": "application/json",
+                },
+                json=filter,
+                timeout=15,
+            )
+            if not r.ok:
+                # fallback: 用 SDK 的 databases.query（老 API，share 上时仍 redirect）
+                response = self.client.databases.query(database_id=id, filter=filter)
+                if os.getenv("DEBUG_RELATION") == "1":
+                    print(f"DEBUG: data_sources query http {r.status_code} for '{name}'; fallback to databases.query got {len(response.get('results', []))} results")
+            else:
+                response = r.json()
+                if os.getenv("DEBUG_RELATION") == "1":
+                    print(f"DEBUG: data_sources query http {r.status_code} for '{name}' got {len(response.get('results', []))} results")
         except Exception as e:
             print(f"WARN: get_relation_id query failed for '{name}': {e}")
             return None
